@@ -1,6 +1,6 @@
 # go-uuidv7
 
-Excercise / napkin quality code that implements the
+Exercise / napkin quality code that implements the
 [UUIDv7](https://www.ietf.org/archive/id/draft-peabody-dispatch-new-uuid-format-01.html)
 Internet-Draft.
 
