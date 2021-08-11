@@ -14,14 +14,14 @@ the program in the first version.
 ```
 goos: linux
 goarch: amd64
-pkg: uuidv7
+pkg: github.com/brittlesoft/go-uuidv7/pkg/uuidv7
 cpu: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
-BenchmarkUuidv7RandNoRand-8              3223029               374.1 ns/op           152 B/op 7 allocs/op
-BenchmarkUuidv7RandStraight-8             461305              2447 ns/op             152 B/op 7 allocs/op
-BenchmarkUuidv7RandSimpleBuf-8           2055200               559.3 ns/op           152 B/op 7 allocs/op
-BenchmarkUuidv7RandBufSwitch-8           3105789               399.1 ns/op           152 B/op 7 allocs/op
+BenchmarkUuidv7RandNoRand-8             15591750                75.49 ns/op            8 B/op          1 allocs/op
+BenchmarkUuidv7RandStraight-8             536056              2178 ns/op               8 B/op          1 allocs/op
+BenchmarkUuidv7RandSimpleBuf-8           4392721               275.6 ns/op             8 B/op          1 allocs/op
+BenchmarkUuidv7RandBufSwitch-8           5999540               199.4 ns/op             8 B/op          1 allocs/op
 PASS
-ok      uuidv7  6.122s
+ok      github.com/brittlesoft/go-uuidv7/pkg/uuidv7     6.349s
 ```
 
 - `BenchmarkUuidv7RandNoRand-8`: Baseline, random bytes are all zeroes.
