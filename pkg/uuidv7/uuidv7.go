@@ -1,7 +1,6 @@
 package uuidv7
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"time"
@@ -94,11 +93,7 @@ func (us *Uuidv7Source) New() (u Uuidv7, err error) {
 	// lower 12-bits of subsec
 	b = b | (subsec & 0x0000000000000fff)
 
-	B := new(bytes.Buffer)
-	err = binary.Write(B, binary.BigEndian, b)
-	if err != nil {
-		return u, err
-	}
+	binary.BigEndian.PutUint64(u.B[:], b)
 
 	// 64bits random
 	_, err = us.rs.Read(r[:])
@@ -109,12 +104,7 @@ func (us *Uuidv7Source) New() (u Uuidv7, err error) {
 	// Variant in top 2bits
 	r[0] = (r[0] & 0x3f) | variant<<6
 
-	err = binary.Write(B, binary.BigEndian, r)
-	if err != nil {
-		return u, err
-	}
-
-	copy(u.B[:], B.Bytes())
+	binary.BigEndian.PutUint64(u.B[8:], binary.LittleEndian.Uint64(r[:]))
 
 	return u, nil
 }
