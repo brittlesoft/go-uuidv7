@@ -1,3 +1,6 @@
+// This file is not used, replaced by `unpredictable`
+// kept here for benchmarks
+
 package uuidv7
 
 import (
@@ -69,6 +72,7 @@ func (rs *randSourceBufSwitch) refiller() {
 
 		incoming.buf = incoming.origin
 		n, err := rand.Read(incoming.buf)
+
 		if err != nil {
 			rs.refilled <- randRefillMsg{incoming, err}
 		}
@@ -81,7 +85,7 @@ func (rs *randSourceBufSwitch) refiller() {
 
 func newRandSourceBufSwitch() (rs *randSourceBufSwitch, err error) {
 	rs = &randSourceBufSwitch{}
-	rs.refill = make(chan *randBuf)
+	rs.refill = make(chan *randBuf, 1)
 	rs.refilled = make(chan randRefillMsg, 1)
 
 	go rs.refiller()

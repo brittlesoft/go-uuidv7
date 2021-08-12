@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"time"
+
+	"github.com/art4711/unpredictable"
 )
 
 const (
@@ -54,7 +56,7 @@ type Uuidv7Source struct {
 
 func NewUuidv7Source() (us *Uuidv7Source, err error) {
 	us = &Uuidv7Source{}
-	us.rs, err = newRandSourceBufSwitch()
+	us.rs = unpredictable.NewReader()
 	return us, err
 }
 

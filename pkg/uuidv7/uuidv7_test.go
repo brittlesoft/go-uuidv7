@@ -1,8 +1,11 @@
 package uuidv7
 
 import (
+	"io"
 	"log"
 	"testing"
+
+	"github.com/art4711/unpredictable"
 )
 
 var u Uuidv7
@@ -38,4 +41,25 @@ func BenchmarkUuidv7RandBufSwitch(b *testing.B) {
 		log.Fatal(err)
 	}
 	benchmarkUuidv7(rs, b)
+}
+
+func BenchmarkUuidv7RandUnpredictable(b *testing.B) {
+	rs := unpredictable.NewReader()
+	benchmarkUuidv7(rs, b)
+}
+
+func uuidv4Unpredictable(rs io.Reader) [16]byte {
+	var r [16]byte = [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8}
+	rs.Read(r[:])
+	return r
+}
+
+func BenchmarkUnpredictableUuidv4(b *testing.B) {
+	b.ReportAllocs()
+
+	rs := unpredictable.NewReader()
+	for n := 0; n < b.N; n++ {
+		r := uuidv4Unpredictable(rs)
+		u.B = r
+	}
 }
