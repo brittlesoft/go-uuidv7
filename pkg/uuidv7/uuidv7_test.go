@@ -35,8 +35,8 @@ func BenchmarkUuidv7RandSimpleBuf(b *testing.B) {
 	benchmarkUuidv7(&randSourceBuf{}, b)
 }
 
-func BenchmarkUuidv7RandBufSwitch(b *testing.B) {
-	rs, err := newRandSourceBufSwitch()
+func BenchmarkUuidv7RandBufQueue(b *testing.B) {
+	rs, err := newRandSourceBufQueue()
 	if err != nil {
 		log.Fatal(err)
 	}

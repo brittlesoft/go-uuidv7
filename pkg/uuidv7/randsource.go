@@ -12,27 +12,26 @@ type randSource interface {
 	Read([]byte) (int, error)
 }
 
-const randPoolSize = 32768
+const (
+	randPoolSize    = 32768
+	maxBufQueueSize = 32
+)
 
 type randBuf struct {
 	buf    []byte
 	origin []byte
-	ok     bool
 }
-type randSourceBufSwitch struct {
-	bufs       [2]randBuf
-	currentIdx uint
-	refill     chan *randBuf
-	refilled   chan randRefillMsg
+type randSourceBufQueue struct {
+	currentBuf *randBuf
+	usedQ      chan *randBuf
+	readyQ     chan randRefillMsg
 }
 type randRefillMsg struct {
 	rbuf *randBuf
 	err  error
 }
 
-func (rs *randSourceBufSwitch) Read(b []byte) (n int, err error) {
-	currentBuf := &rs.bufs[rs.currentIdx]
-
+func (rs *randSourceBufQueue) Read(b []byte) (n int, err error) {
 	toread := cap(b)
 	if toread > randPoolSize {
 		return 0, fmt.Errorf("Invalid size")
@@ -40,66 +39,65 @@ func (rs *randSourceBufSwitch) Read(b []byte) (n int, err error) {
 		return 0, fmt.Errorf("nocap")
 	}
 
-	if toread > len(currentBuf.buf) {
-		// out of randomness, refill buf and switch to next one
-		currentBuf.ok = false
-		rs.refill <- currentBuf
+	if toread > len(rs.currentBuf.buf) {
+		// out of randomness, refill buf
+		rs.usedQ <- rs.currentBuf
 
-		rs.currentIdx = (rs.currentIdx + 1) % 2
-		currentBuf = &rs.bufs[rs.currentIdx]
-
-		if currentBuf.ok == false {
-			// block waiting for refilled if not ready
-			msg := <-rs.refilled
-			if msg.err != nil {
-				return 0, msg.err
-			}
-			currentBuf = msg.rbuf
-			currentBuf.ok = true
+		msg := <-rs.readyQ
+		rs.currentBuf = msg.rbuf
+		if msg.err != nil {
+			// on error currentBuf is likely still empty/unuseable, next read
+			// will push it back to usedQ
+			return 0, msg.err
 		}
 	}
 
-	copy(b[:], currentBuf.buf[:toread])
-	currentBuf.buf = currentBuf.buf[toread:]
+	copy(b[:], rs.currentBuf.buf[:toread])
+	rs.currentBuf.buf = rs.currentBuf.buf[toread:]
 
 	return toread, nil
 }
 
-func (rs *randSourceBufSwitch) refiller() {
+func (rs *randSourceBufQueue) refiller() {
+	allocated := 0
 	var incoming *randBuf
 	for {
-		incoming = <-rs.refill
+		if allocated < maxBufQueueSize {
+			incoming = &randBuf{
+				buf: make([]byte, randPoolSize),
+			}
+			incoming.origin = incoming.buf
+			allocated++
+		} else {
+			// block receiving once we allocated all maxBufQueueSize buffers
+			incoming = <-rs.usedQ
+		}
 
 		incoming.buf = incoming.origin
+
 		n, err := rand.Read(incoming.buf)
 
 		if err != nil {
-			rs.refilled <- randRefillMsg{incoming, err}
+			rs.readyQ <- randRefillMsg{incoming, err}
 		}
 		if n != randPoolSize {
-			rs.refilled <- randRefillMsg{incoming, fmt.Errorf("rand.Read short read: %d", n)}
+			rs.readyQ <- randRefillMsg{incoming, fmt.Errorf("rand.Read short read: %d", n)}
 		}
-		rs.refilled <- randRefillMsg{incoming, nil}
+		rs.readyQ <- randRefillMsg{incoming, nil}
 	}
 }
 
-func newRandSourceBufSwitch() (rs *randSourceBufSwitch, err error) {
-	rs = &randSourceBufSwitch{}
-	rs.refill = make(chan *randBuf, 1)
-	rs.refilled = make(chan randRefillMsg, 1)
+func newRandSourceBufQueue() (rs *randSourceBufQueue, err error) {
+	rs = &randSourceBufQueue{}
+	rs.usedQ = make(chan *randBuf, maxBufQueueSize)
+	rs.readyQ = make(chan randRefillMsg, maxBufQueueSize)
 
 	go rs.refiller()
-	for i, b := range rs.bufs {
-		b.buf = make([]byte, randPoolSize)
-		b.origin = b.buf
-
-		rs.refill <- &b
-		refilled := <-rs.refilled
-		if refilled.err != nil {
-			return rs, refilled.err
-		}
-		rs.bufs[i] = *refilled.rbuf
+	msg := <-rs.readyQ
+	if msg.err != nil {
+		return nil, msg.err
 	}
+	rs.currentBuf = msg.rbuf
 
 	return rs, nil
 }
